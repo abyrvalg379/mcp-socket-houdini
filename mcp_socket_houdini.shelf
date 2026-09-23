@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shelfDocument>
+  <!-- MCP Socket for Houdini shelf - bridge window opener (mcp-socket family) -->
+
+  <tool name="mcp_socket_window" label="MCP Socket" icon="mcp_socket_houdini">
+    <script scriptType="python"><![CDATA[import mcp_socket_houdini.ui as _mcp_ui
+try:
+    _mcp_ui.show_window()
+except Exception as e:
+    import traceback
+    hou.ui.displayMessage("MCP Socket Houdini: " + str(e) + "\n\n" + traceback.format_exc())
+]]></script>
+  </tool>
+  <toolshelf name="mcp_socket" label="MCP Socket">
+    <memberTool name="mcp_socket_window"/>
+  </toolshelf>
+</shelfDocument>
