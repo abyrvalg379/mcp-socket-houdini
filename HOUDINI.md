@@ -1,4 +1,4 @@
-# MCP Socket for Houdini — v0.1.0
+# MCP Socket for Houdini — v0.1.1
 
 Houdini-ветка семейства mcp-socket. TCP-листенер внутри Houdini с общим
 протоколом mcp-socket / blender-mcp 1.6.x. Заменяет старый HTTP-эпохи мост

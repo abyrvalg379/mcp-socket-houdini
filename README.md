@@ -4,7 +4,7 @@ Local MCP bridge for Side Effects Houdini — the Houdini branch of the [mcp-soc
 
 Part of the **STUKACH — Pipeline Asset Validation System** toolset.
 
-**Author:** Maksim Kovalev · **Version:** 0.1.0 · **License:** GPL-3.0
+**Author:** Maksim Kovalev · **Version:** 0.1.1 · **License:** GPL-3.0
 
 *Документация на русском: [README.ru.md](README.ru.md)*
 
