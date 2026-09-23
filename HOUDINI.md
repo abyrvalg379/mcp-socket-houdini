@@ -138,6 +138,21 @@ JSONL-лог: `%TEMP%\mcp_socket_houdini\sessions\` (гэп 10 с = новый �
     `~/houdini20.5` и пакеты НЕ видит — тестировать с
     `HOME="C:\Users\mkova\Documents"`.
 
+18. **PySide2 QTimer с питон-колбеком в Houdini = СЛУЧАЙНЫЙ СЕГФОЛТ
+    (инцидент 2026-09-24, три кейса).** Parentless `QtCore.QTimer` +
+    `timeout.connect(python_fn)` внутри гибридного event loop Houdini
+    (UI_Queue::eventLoop → QEventDispatcherWin32) портит кучу: через ~4
+    минуты аптайма процесс падает signal 11, стек всегда один:
+    `QTimer::timerEvent → PySide::SignalManager::callPythonMetaMethod →
+    PyObject_GC_New → SIGSEGV` (crash-логи в %TEMP%\houdini_temp).
+    Правило: **никаких QTimer-колбеков в питоне внутри Houdini** — фоновая
+    периодика = daemon-поток с чисто ОС-операциями (наш heartbeat:
+    `os.utime` реестра каждые 10с; всё, что трогает hou, — только через
+    очередь главного потока). Урок-сосед: PySide2 `postEvent` НЕ передаёт
+    владение QEvent питоном — не постить питон-созданные события из чужих
+    нитей (кик event loop сделан через `QMetaObject.invokeMethod(win,
+    "update", QueuedConnection)`).
+
 ## Отключение старого моста PROKLADKA
 
 Старый мост жил в `PROKLADKA/work/houdini_mcp_server.py` и стартовался
