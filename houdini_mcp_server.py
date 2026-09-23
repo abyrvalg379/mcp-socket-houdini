@@ -989,6 +989,14 @@ class MCPSocketServer:
 def _heartbeat() -> None:
     _install_log_tee()      # self-heal: reloads may leave stale wrappers
     _write_registry()
+    try:                    # prune dead instances' registry files
+        for path in glob.glob(os.path.join(_registry_dir(), "pid_*.json")):
+            if str(os.getpid()) in path:
+                continue
+            if time.time() - os.path.getmtime(path) > _STALE_SECONDS:
+                os.remove(path)
+    except OSError:
+        pass
 
 
 def _start_heartbeat() -> None:
