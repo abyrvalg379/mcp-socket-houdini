@@ -16,8 +16,9 @@ Commands
     ping                  versions, pid, port, hip, fps, counts
     get_scene_info        hip, modified, fps, frame, playback range, contexts
     get_hierarchy         /obj node tree (paths, types, depth, display flag)
-    get_screenshot        mode "window" (default): Qt grab of the main
-                          window (occlusion-proof); mode "flipbook": true
+    get_screenshot        mode "window" (default): physical screen capture
+                          of the main window (QWidget.grab() is black —
+                          Houdini draws natively); mode "flipbook": true
                           viewport render with current flipbook settings
     get_console_log       ring buffer of stdout/stderr (global tee + per-exec)
     clear_console_log
@@ -181,6 +182,21 @@ def _event_loop_callback() -> None:
             ev.set()
 
 
+def _kick_event_loop() -> None:
+    """Post a no-op Qt event so an idle main loop wakes up and the
+    event-loop callback gets a chance to drain the job queue. Without this
+    a Houdini idle with no user input can leave jobs queued until the
+    wait times out (TCP thread stalls, backlog fills, connects refused)."""
+    try:
+        from PySide2 import QtCore
+        app = QtCore.QCoreApplication.instance()
+        if app is not None:
+            QtCore.QCoreApplication.postEvent(
+                app, QtCore.QEvent(QtCore.QEvent.User))
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _run_on_main(fn, timeout: float = 180.0):
     """Run fn() on Houdini's main thread, return its result / re-raise.
 
@@ -190,6 +206,7 @@ def _run_on_main(fn, timeout: float = 180.0):
     ev = threading.Event()
     box: Dict[str, Any] = {}
     _MAIN_QUEUE.put((fn, box, ev))
+    _kick_event_loop()
     if not ev.wait(timeout):
         raise RuntimeError("main-thread job timed out after %ss "
                            "(modal dialog open?)" % timeout)
@@ -217,7 +234,7 @@ def _top_undo_label() -> str:
         labels = hou.undos.undoLabels()
     except Exception:  # noqa: BLE001
         return ""
-    return labels[-1] if labels else ""   # newest last (verified 20.5)
+    return labels[0] if labels else ""   # newest FIRST (verified live 20.5.278)
 
 
 # ── helpers ───────────────────────────────────────────────────────────────
@@ -416,12 +433,21 @@ def _h_get_screenshot(params: dict) -> dict:
         win = hou.qt.mainWindow()
         if win is None:
             raise RuntimeError("no Houdini main window")
-        pix = win.grab()
+        # QWidget.grab() returns an all-black pixmap here: Houdini draws
+        # natively, the Qt backing store stays empty. Physical screen
+        # capture works (verified live 20.5.278).
+        from PySide2 import QtWidgets
+        app = QtWidgets.QApplication.instance()
+        scr = app.primaryScreen() if app else None
+        if scr is None:
+            raise RuntimeError("no screen to capture from")
+        pix = scr.grabWindow(win.winId())
         if not pix.save(filepath, "PNG"):
             raise RuntimeError("failed to save %s" % filepath)
         return {"filepath": filepath, "mode": mode,
                 "width": pix.width(), "height": pix.height(),
-                "note": "Qt widget grab of the main window"}
+                "note": "physical screen capture of the main window; "
+                        "occluded areas show whatever covers them"}
 
     viewer = hou.ui.paneTabOfType(hou.paneTabType.SceneViewer)
     if viewer is None:
@@ -913,7 +939,7 @@ class MCPSocketServer:
                   % (_TAG, self.host, self.preferred_port,
                      self.preferred_port + _PORT_OFFSETS, last_error))
             return False
-        sock.listen(1)
+        sock.listen(4)
         sock.settimeout(1.0)
         self.socket = sock
         self.running = True
