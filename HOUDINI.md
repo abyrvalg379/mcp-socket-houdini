@@ -81,7 +81,18 @@ JSONL-лог: `%TEMP%\mcp_socket_houdini\sessions\` (гэп 10 с = новый �
    2026-09-23. Рабочий путь: физический захват `QScreen.grabWindow(winId)`
    (окно активно — контент есть); минус — перекрытая часть покажет то, что
    поверх.
-6. `hou.FlipbookSettings` абстрактный — конструктора нет.
+6. `hou.FlipbookSettings` абстрактный — конструктора нет. НО у
+   `hou.SceneViewer` ЕСТЬ `flipbookSettings()` → живой read-only объект
+   (frameRange дефолта = playbar 1-240!; 4 сеттера: только
+   setUseFrameProgressLimit/setFrameProgessLimit/setUseFrameTimeLimit/
+   setFrameTimeLimit — «setFrameProgessLimit» с опечаткой фирмы).
+   `setUseFrameProgressLimit(True)+setFrameProgessLimit(1)` = рендер 1
+   кадра из длинного диапазона (проверено живьём). Дефолтный выход —
+   outputToMPlay=True, output пустой: ФАЙЛ НА ДИСКЕ НЕ СОЗДАЁТСЯ
+   (открывается MPlay-окно) — flipbook-тул с 9d790eb в этом случае
+   падает быстро с внятным сообщением вместо 60-секундного поиска.
+   Чтобы тул находил файл, юзер один раз ставит output в диалоге
+   флипбука — настройки персистятся.
 7. `hou.undos`: `UserUndoBlock` НЕ существует, но `hou.undos.group(label)` —
    контекст-менеджер «один экшен на undo-стеке»; `undoLabels()` — новейшая
    ПЕРВАЯ (`labels[0]`; вживую доказано 2026-09-23: последний вызов моста
