@@ -4,7 +4,7 @@
 
 Часть набора **STUKACH — Pipeline Asset Validation System**.
 
-**Автор:** Maksim Kovalev · **Версия:** 0.1.0 · **Лицензия:** GPL-3.0
+**Автор:** Maksim Kovalev · **Версия:** 0.1.1 · **Лицензия:** GPL-3.0
 
 *English documentation: [README.md](README.md)*
 

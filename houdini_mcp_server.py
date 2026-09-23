@@ -69,7 +69,7 @@ from typing import Any, Dict, Optional
 import hou
 
 _TAG = "[MCP_Socket_Houdini]"
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 
 _DEFAULT_HOST = "127.0.0.1"
 _DEFAULT_PORT = 9877
