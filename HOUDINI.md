@@ -124,6 +124,19 @@ JSONL-лог: `%TEMP%\mcp_socket_houdini\sessions\` (гэп 10 с = новый �
     ТРЕБУЕТ ВЕРИФИКАЦИИ на рестарте (повторить idle-пинг и осторожный replay
     на сохранённой сцене). Диагностика на будущее: `py-spy dump --pid
     <pid>` (есть в системе, 0.4.2).
+17. **NumPy 2.x из user-site → СЕГФОЛТ Houdini (инцидент 2026-09-24).**
+    `AppData\Roaming\Python\Python311\site-packages` — ОБЩИЙ user-site всех
+    питонов 3.11 на машине: Maya 2025 держит там numpy 2.4.6/scipy/websockets
+    (mayapy подтверждает: берёт numpy из Roaming — удалять НЕЛЬЗЯ), а
+    Houdini-питон 3.11 подхватывает тот же каталог → numpy 2.x затирает
+    родной 1.24.4 → при старте warning «compiled using NumPy 1.x», в работе
+    Segmentation fault (дамп crash.<hip>.hip в %TEMP%\houdini_temp).
+    Решение: пакет
+    `<pref>/packages/zpython_no_user_site.json` = `{"env":
+    [{"PYTHONNOUSERSITE": "1"}]}` — Houdini-only, Maya не затронута.
+    Грабля проверки: hython из Git Bash с HOME=/c/Users/mkova ищет префы в
+    `~/houdini20.5` и пакеты НЕ видит — тестировать с
+    `HOME="C:\Users\mkova\Documents"`.
 
 ## Отключение старого моста PROKLADKA
 
