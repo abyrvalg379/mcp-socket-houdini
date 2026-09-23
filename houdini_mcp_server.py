@@ -452,6 +452,14 @@ def _h_get_screenshot(params: dict) -> dict:
     viewer = hou.ui.paneTabOfType(hou.paneTabType.SceneViewer)
     if viewer is None:
         raise RuntimeError("no Scene Viewer pane open")
+    fs = viewer.flipbookSettings()
+    if fs.outputToMPlay() and not fs.output():
+        # default output goes to an MPlay window — no file will ever appear,
+        # don't waste 60 s scanning for one (verified live 2026-09-24)
+        raise RuntimeError(
+            "flipbook output is set to MPlay (no file on disk). Set an "
+            "output path once in the flipbook dialog (Render > Flipbook "
+            "with output field), or use mode='window' for screenshots")
     t0 = time.time()
     viewer.flipbook()
     deadline = t0 + 60.0
