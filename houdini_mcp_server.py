@@ -79,7 +79,7 @@ _HANDLER_WARN_SECONDS = 30.0
 
 _SESSION_GAP = 10.0         # session-log border, seconds (family-wide)
 _SESSIONS_KEEP = 30         # newest JSONL files kept
-_HEARTBEAT_MS = 10000       # instance-registry heartbeat
+_TOUCH_INTERVAL_SECONDS = 10.0  # registry mtime bump (no timers!)
 _STALE_SECONDS = 25.0       # registry entry older than this = dead instance
 _UNDO_LABEL = "MCP Socket"  # undo group prefix, also the undo_agent_session anchor
 _UNDO_MAX_STEPS = 200       # cap for one undo_agent_session call
@@ -87,7 +87,7 @@ _UNDO_MAX_STEPS = 200       # cap for one undo_agent_session call
 _server = None              # MCPSocketServer
 _thread: Optional[threading.Thread] = None
 _window = None              # Qt window singleton
-_heartbeat_timer = None
+_registry_touch_stop = None   # Event for the registry touch thread
 _event_cb_installed = False
 _tees: Dict[str, Any] = {}
 
@@ -801,7 +801,7 @@ def _h_list_instances(params: dict) -> dict:
             continue
         entry = {"pid": data.get("pid"), "port": data.get("port"),
                  "version": data.get("version"), "hip": data.get("hip"),
-                 "age_seconds": round(time.time() - data.get("ts", 0), 1)}
+                 "age_seconds": round(time.time() - os.path.getmtime(path), 1)}
         if entry["age_seconds"] <= _STALE_SECONDS:
             fresh.append(entry)
         else:
@@ -1010,11 +1010,24 @@ class MCPSocketServer:
             print("%s failed to send reply — client gone" % _TAG)
 
 
-# ── heartbeat ─────────────────────────────────────────────────────────────
+# ── registry liveness (touch loop on the socket thread side) ─────────────
 
-def _heartbeat() -> None:
-    _install_log_tee()      # self-heal: reloads may leave stale wrappers
-    _write_registry()
+def _registry_touch_loop(stop_ev: threading.Event) -> None:
+    """Bump the registry file's mtime every tick — pure OS calls, no hou,
+    no Qt, no Python objects crossing threads. This replaces a PySide2
+    QTimer heartbeat: a python callback fired by a parentless QTimer inside
+    Houdini's hybrid event loop segfaulted the process at random times
+    (identical crash stacks: QTimer::timerEvent → SignalManager →
+    PyObject_GC_New → SIGSEGV; three incidents 2026-09-23/24)."""
+    path = os.path.join(_registry_dir(), "pid_%d.json" % os.getpid())
+    while not stop_ev.wait(_TOUCH_INTERVAL_SECONDS):
+        try:
+            os.utime(path, None)
+        except OSError:
+            pass
+
+
+def _prune_dead_registries() -> None:
     try:                    # prune dead instances' registry files
         for path in glob.glob(os.path.join(_registry_dir(), "pid_*.json")):
             if str(os.getpid()) in path:
@@ -1025,29 +1038,23 @@ def _heartbeat() -> None:
         pass
 
 
-def _start_heartbeat() -> None:
-    global _heartbeat_timer
-    if _heartbeat_timer is not None or not hou.isUIAvailable():
+def _start_registry_touch() -> None:
+    global _registry_touch_stop
+    _install_log_tee()      # self-heal: reloads may leave stale wrappers
+    _write_registry()
+    _prune_dead_registries()
+    if _registry_touch_stop is not None:
         return
-    _heartbeat()
-    try:
-        from PySide2 import QtCore
-        _heartbeat_timer = QtCore.QTimer()
-        _heartbeat_timer.timeout.connect(_heartbeat)
-        _heartbeat_timer.start(_HEARTBEAT_MS)
-    except Exception as exc:  # noqa: BLE001 — headless etc.
-        print("%s heartbeat unavailable: %s" % (_TAG, exc))
-        _heartbeat_timer = None
+    _registry_touch_stop = threading.Event()
+    threading.Thread(target=_registry_touch_loop,
+                     args=(_registry_touch_stop,), daemon=True).start()
 
 
-def _stop_heartbeat() -> None:
-    global _heartbeat_timer
-    if _heartbeat_timer is not None:
-        try:
-            _heartbeat_timer.stop()
-        except Exception:  # noqa: BLE001
-            pass
-        _heartbeat_timer = None
+def _stop_registry_touch() -> None:
+    global _registry_touch_stop
+    if _registry_touch_stop is not None:
+        _registry_touch_stop.set()
+        _registry_touch_stop = None
 
 
 # ── start/stop (called from 456.py or the shelf) — signature stable ───────
@@ -1067,7 +1074,7 @@ def start(port: int = _DEFAULT_PORT) -> bool:
     _thread = threading.Thread(target=_server.accept_loop, daemon=True)
     _thread.start()
     _install_log_tee()
-    _start_heartbeat()
+    _start_registry_touch()
     _write_registry()
     return True
 
@@ -1084,7 +1091,7 @@ def stop() -> None:
         except Exception:  # noqa: BLE001
             pass
         _event_cb_installed = False
-    _stop_heartbeat()
+    _stop_registry_touch()
     _remove_registry()
     _restore_streams()
     print("%s stopped" % _TAG)
