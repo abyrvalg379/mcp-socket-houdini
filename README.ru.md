@@ -86,6 +86,24 @@ N-панель Blender: шапка со статусом, Undo Agent Work, Agent
 `--port 9878` или переменная `HOUDINI_MCP_SOCKET_PORT` выбирают второй
 инстанс Houdini.
 
+## Смоук-тест
+
+`tests/socket_smoke.py` — read-only смоук живого моста: сырой TCP по
+wire-протоколу, только read-only команды (`ping`, `get_scene_info`,
+`get_hierarchy`, `list_instances`, `get_session_log_path`). Сцену не трогает —
+можно гонять посреди работы:
+
+```
+python tests/socket_smoke.py houdini
+```
+
+Полностью headless-вариант без GUI — `test_headless.py` под `hython`
+(поднимает мост in-process на черновом порту).
+
+Код возврата 0, когда все доступные мосты прошли проверки. Запускать перед
+релизом; тот же скрипт без аргументов проверяет ещё ветки Blender (`:9876`) и
+Maya (`:7777`).
+
 ## Безопасность
 
 Только localhost, без аутентификации; `execute_houdini_code` исполняет

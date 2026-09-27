@@ -86,6 +86,24 @@ Zero dependencies beyond the Python standard library:
 `--port 9878` or the `HOUDINI_MCP_SOCKET_PORT` env var selects a second
 Houdini instance.
 
+## Smoke test
+
+`tests/socket_smoke.py` is a read-only smoke test for the live bridge — raw
+TCP on the wire protocol, read-only commands only (`ping`, `get_scene_info`,
+`get_hierarchy`, `list_instances`, `get_session_log_path`). Never mutates the
+scene, safe to run mid-session:
+
+```
+python tests/socket_smoke.py houdini
+```
+
+For a fully headless check without the GUI, `test_headless.py` (run with
+`hython`) starts the bridge in-process on a scratch port.
+
+Exit code is 0 when every reachable bridge passes. Run it before a release;
+the same script with no arguments also smokes the Blender (`:9876`) and Maya
+(`:7777`) branches of the family.
+
 ## Security
 
 localhost-only, no authentication, and `execute_houdini_code` runs arbitrary
