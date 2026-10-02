@@ -116,7 +116,7 @@ JSONL-лог: `%TEMP%\mcp_socket_houdini\sessions\` (гэп 10 с = новый �
     type name» (реестр HOM нитевой) — наш dispatch главный поток даёт
     автоматически.
 11. hython из Git Bash: HOME указывает на /c/... — префы уезжают в
-    `~/houdini20.5`; переопределять `HOME="C:\Users/<user>\Documents"`.
+    `~/houdini20.5`; переопределять `HOME="C:\Users\<user>\Documents"`.
     456.py подхватывается и из CWD — не держать 456.py в рабочей папке.
 12. PySide2 (НЕ PySide6; `hutil.Qt` сам выбирает биндинг); parent окна —
     `hou.qt.mainWindow()`.
@@ -153,7 +153,7 @@ JSONL-лог: `%TEMP%\mcp_socket_houdini\sessions\` (гэп 10 с = новый �
     [{"PYTHONNOUSERSITE": "1"}]}` — Houdini-only, Maya не затронута.
     Грабля проверки: hython из Git Bash с HOME=/c/Users/<user> ищет префы в
     `~/houdini20.5` и пакеты НЕ видит — тестировать с
-    `HOME="C:\Users/<user>\Documents"`.
+    `HOME="C:\Users\<user>\Documents"`.
 
 18. **PySide2 QTimer с питон-колбеком в Houdini = СЛУЧАЙНЫЙ СЕГФОЛТ
     (инцидент 2026-09-24, три кейса).** Parentless `QtCore.QTimer` +
